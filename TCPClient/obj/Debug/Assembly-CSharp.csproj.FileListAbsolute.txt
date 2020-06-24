@@ -1,0 +1,2 @@
+H:\SafePort\Unity_Projects\TCPClient\obj\Debug\Assembly-CSharp.csprojAssemblyReference.cache
+H:\SafePort\Unity_Projects\TCPClient\obj\Debug\Assembly-CSharp.csproj.CoreCompileInputs.cache
