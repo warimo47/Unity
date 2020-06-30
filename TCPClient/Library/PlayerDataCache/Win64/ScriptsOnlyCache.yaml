@@ -465,4 +465,4 @@ ScriptsOnlyBuild:
   platform: 19
   scenePathNames:
   - Assets/Scenes/SampleScene.unity
-  playerPath: H:/SafePort/Unity_Projects/TCPClient/Program/TCPClient.exe
+  playerPath: H:/SafePort/Unity_Projects/TCPClient/Program/V_0_1_0/TCPClient.exe

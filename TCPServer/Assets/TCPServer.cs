@@ -24,6 +24,16 @@ public unsafe struct IF_SC100
     public byte accidentRiskLevel;
 };
 
+[Serializable]
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public unsafe struct IF_SC200
+{
+    public byte header;
+    public fixed char sectionName[32];
+    public fixed char IP[30];
+    public byte accidentRiskType;
+};
+
 public class MyClient
 {
     public static int recvBufferSize = 200;
@@ -51,7 +61,7 @@ public class MyClient
             recvSize = networkStream.Read(recvBuffer, 0, recvBufferSize);
             if (recvSize == 0) break;
 
-            Debug.Log("recvSize = " + recvSize);
+            // Debug.Log("recvSize = " + recvSize);
 
             ProccessRecv(recvBuffer);
         }
@@ -68,6 +78,14 @@ public class MyClient
                 string debugLine = "[" + this.tcpClient.Client.RemoteEndPoint.ToString() + "] : "
                     + id + " " + ipstr + " " + if_sc100.latitude + " " + if_sc100.longitude + " " + if_sc100.objType + " " + if_sc100.isApproved + " " + if_sc100.accidentRiskLevel;
                 Debug.Log(debugLine);
+                break;
+            case 2:
+                IF_SC200 if_sc200 = (IF_SC200)ByteArrayToStructure(recvBuffer, typeof(IF_SC200));
+                string sectionNameStr = new string(if_sc200.sectionName);
+                string ipstr2 = new string(if_sc200.IP);
+                string debugLine2 = "[" + this.tcpClient.Client.RemoteEndPoint.ToString() + "] : "
+                    + sectionNameStr + " " + ipstr2 + " " + if_sc200.accidentRiskType;
+                Debug.Log(debugLine2);
                 break;
             default:
                 Debug.Log("recv wrong data " + recvBuffer[0]);
@@ -148,7 +166,7 @@ public class TCPServer : MonoBehaviour
         {
             TcpClient tempTCPClient = this.tcp_Listener.AcceptTcpClient(); // 클라이언트와 접속
             this.myClients[clientCount].AcceptClient(tempTCPClient);
-            
+
             Thread recvThread = new Thread(new ThreadStart(this.myClients[clientCount].Recv), 8192);
 
             clientCount++;
