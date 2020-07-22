@@ -8,122 +8,104 @@ using UnityEngine.UI;
 #region [Packet define]
 [Serializable]
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public unsafe struct IF_SC100
+public unsafe struct TestPacket
 {
     public byte header;
-    public fixed char IP[30];
-    public double latitude;
-    public double longitude;
-    public byte objType; // 1:Person 2:Movable Equipment 3:Unidentified object
-    public fixed char time[20];
-    public int objX1;
-    public int objY1;
-    public int objX2;
-    public int objY2;
-    public int percent; // 0 ~ 100
-};
-
-[Serializable]
-[StructLayout(LayoutKind.Sequential, Pack = 1)]
-public unsafe struct IF_SC200
-{
-    public byte header;
-    public fixed char deviceID[8];
-    public fixed char time[10];
-    public fixed char fireStatusInformation[10];
-    public fixed char deviceStatusInformation[10];
-};
-
-[Serializable]
-[StructLayout(LayoutKind.Sequential, Pack = 1)]
-public unsafe struct IF_SC300
-{
-    public byte header;
-    public fixed char deviceID[8];
-    public fixed char time[10];
-    public fixed char eventStatusInformation[10];
-    public fixed char deviceStatusInformation[10];
-    public fixed char emergencySituationInformation[10];
+    public fixed char stringParam[30];
+    public double doubleParam;
+    public int intParam;
 };
 #endregion
 
 public class MyClient
 {
-    // ========== ID ==========
-    public int clientID = -1;
+    // ========== TCP Module ==========
+    private TCPServer myTCPServer = null;
 
     // ========== Network ==========
     public byte[] recvBuffer = new byte[Define.recvBufferSize];
     public Socket mySocket;
-    // public NetworkStream networkStream;
-    // public StreamReader streamReader;
 
     // ========== UI ==========
-    private Text logText = null;
-    private ScrollRect scrollRect = null;
+    private Text logText;
+    private ScrollRect scrollRect;
 
-    public MyClient(int clientID, Socket mySocket)
+    public MyClient(TCPServer localTCPServer,  Socket localMySocket, Text localLogText, ScrollRect localScrollRect)
     {
-        this.clientID = clientID;
-        this.mySocket = mySocket;
+        myTCPServer = localTCPServer;
+        mySocket = localMySocket;
+
+        logText = localLogText;
+        scrollRect = localScrollRect;
     }
 
-    public void Start()
+    ~MyClient()
     {
-        logText = GameObject.Find("Log").GetComponent<Text>();
-        scrollRect = GameObject.Find("ScrollView").GetComponent<ScrollRect>();
+        // Debug.Log("Delete() " + mySocket.RemoteEndPoint.ToString());
     }
 
-    /*
-    public void Recv()
+    // 아무 패킷이나 받으면 호출 되는 콜벡 함수
+    public void PacketReceived(IAsyncResult ar)
     {
-        int recvSize = -1;
-
-        while (true)
+        try
         {
-            recvSize = networkStream.Read(recvBuffer, 0, Define.recvBufferSize);
-            if (recvSize == 0) break;
+            // 패킷 수신 함수 호출
+            int received = mySocket.EndReceive(ar);
 
-            // Debug.Log("recvSize = " + recvSize);
+            // Debug.Log("EndReceive() called");
 
-            // ProccessRecv(recvBuffer);
+            // 연결 끊김
+            if (received == 0)
+            {
+                mySocket.Close();
+
+                myTCPServer.DisconnectClient(this);
+
+                return;
+            }
+
+            // 패킷 처리 함수 호출
+            ProccessRecv();
+        }
+        catch (Exception ex)
+        {
+            Debug.Log("EndReceive() " + ex.ToString());
+        }
+
+        try
+        {
+            // 다시 비동기 수신 대기
+            mySocket.BeginReceive(recvBuffer, 0, Define.recvBufferSize, 0, PacketReceived, this);
+        }
+        catch (Exception ex)
+        {
+            Debug.Log("BeginReceive() " + ex.ToString());
         }
     }
-
     
-    public unsafe void ProccessRecv(byte[] recvBuffer)
+    // 패킷 처리 함수
+    public unsafe void ProccessRecv()
     {
-        string debugLine = "[" + this.tcpClient.Client.RemoteEndPoint.ToString() + "] : ";
+        string logString = "[" + mySocket.RemoteEndPoint.ToString() + "] ";
 
+        // 패킷의 종류에 따라 분기
         switch ((int)recvBuffer[0])
         {
             case 1:
-                IF_SC100 if_sc100 = (IF_SC100)ByteArrayToStructure(recvBuffer, typeof(IF_SC100));
-                string ipStr = new string(if_sc100.IP);
-                string timeStr = new string(if_sc100.time);
-                debugLine += ipStr + " " + if_sc100.latitude + " " + if_sc100.longitude + " " + if_sc100.objType + " "
-                    + timeStr + " " + if_sc100.objX1 + " " + if_sc100.objY1 + " " + if_sc100.objX2 + " " + if_sc100.objY2 + " " + if_sc100.percent + "\n";
-                break;
-            case 2:
-                IF_SC200 if_sc200 = (IF_SC200)ByteArrayToStructure(recvBuffer, typeof(IF_SC200));
-                debugLine += "\n";
-                break;
-            case 3:
-                IF_SC300 if_sc300 = (IF_SC300)ByteArrayToStructure(recvBuffer, typeof(IF_SC300));
-                debugLine += "\n";
+                TestPacket testPacket = (TestPacket)ByteArrayToStructure(recvBuffer, typeof(TestPacket));
+                string ipStr = new string(testPacket.stringParam);
+                logString += ipStr + " " + testPacket.doubleParam + " " + testPacket.intParam + "\n";
                 break;
             default:
                 Debug.Log("recv wrong data " + recvBuffer[0]);
                 break;
         }
 
-        logText.text += debugLine;
-        scrollRect.verticalNormalizedPosition = 0.0f;
-
-        Debug.Log(debugLine);
+        // 로그 출력 할 것이 있으면 큐에 넣음
+        myTCPServer.atomicQueue.Enqueue(logString);
     }
-    */
 
+    // 버퍼를 구조체로 형변환해주는 함수
     static public object ByteArrayToStructure(byte[] byteData, Type type)
     {
         GCHandle gch = GCHandle.Alloc(byteData, GCHandleType.Pinned);

@@ -1,177 +1,148 @@
 ﻿using System;
-using System.Linq;
-using System.Text;
-using System.IO;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
-using System.Collections;
-using System.Collections.Generic;
 using System.Threading;
-using System.Runtime.InteropServices;
 using UnityEngine;
+using UnityEngine.UI;
 
-[Serializable]
-[StructLayout(LayoutKind.Sequential, Pack = 1)]
-public unsafe struct IF_SC100
+static class Define
 {
-    public byte header;
-    public fixed char ID[32];
-    public fixed char IP[30];
-    public double latitude;
-    public double longitude;
-    public byte objType;
-    public byte isApproved;
-    public byte accidentRiskLevel;
-};
-
-[Serializable]
-[StructLayout(LayoutKind.Sequential, Pack = 1)]
-public unsafe struct IF_SC200
-{
-    public byte header;
-    public fixed char sectionName[32];
-    public fixed char IP[30];
-    public byte accidentRiskType;
-};
-
-public class MyClient
-{
-    public static int recvBufferSize = 200;
-    public byte[] recvBuffer = new Byte[recvBufferSize];
-    public TcpClient tcpClient;
-    public NetworkStream networkStream;
-    public StreamReader streamReader;
-
-    public void AcceptClient(TcpClient tmpClient)
-    {
-        this.tcpClient = tmpClient;
-
-        this.networkStream = this.tcpClient.GetStream();
-        this.streamReader = new StreamReader(this.networkStream);
-
-        Debug.Log("Accept " + this.tcpClient.Client.RemoteEndPoint.ToString());
-    }
-
-    public void Recv()
-    {
-        int recvSize = -1;
-
-        while (true)
-        {
-            recvSize = networkStream.Read(recvBuffer, 0, recvBufferSize);
-            if (recvSize == 0) break;
-
-            // Debug.Log("recvSize = " + recvSize);
-
-            ProccessRecv(recvBuffer);
-        }
-    }
-
-    public unsafe void ProccessRecv(byte[] recvBuffer)
-    {
-        switch ((int)recvBuffer[0])
-        {
-            case 1:
-                IF_SC100 if_sc100 = (IF_SC100)ByteArrayToStructure(recvBuffer, typeof(IF_SC100));
-                string id = new string(if_sc100.ID);
-                string ipstr = new string(if_sc100.IP);
-                string debugLine = "[" + this.tcpClient.Client.RemoteEndPoint.ToString() + "] : "
-                    + id + " " + ipstr + " " + if_sc100.latitude + " " + if_sc100.longitude + " " + if_sc100.objType + " " + if_sc100.isApproved + " " + if_sc100.accidentRiskLevel;
-                Debug.Log(debugLine);
-                break;
-            case 2:
-                IF_SC200 if_sc200 = (IF_SC200)ByteArrayToStructure(recvBuffer, typeof(IF_SC200));
-                string sectionNameStr = new string(if_sc200.sectionName);
-                string ipstr2 = new string(if_sc200.IP);
-                string debugLine2 = "[" + this.tcpClient.Client.RemoteEndPoint.ToString() + "] : "
-                    + sectionNameStr + " " + ipstr2 + " " + if_sc200.accidentRiskType;
-                Debug.Log(debugLine2);
-                break;
-            default:
-                Debug.Log("recv wrong data " + recvBuffer[0]);
-                break;
-        }
-    }
-
-    static public object ByteArrayToStructure(byte[] byteData, Type type)
-    {
-        GCHandle gch = GCHandle.Alloc(byteData, GCHandleType.Pinned);
-        object result = Marshal.PtrToStructure(gch.AddrOfPinnedObject(), type);
-        gch.Free();
-        return result;
-    }
-
-    //public static object ByteArrayToStructure(byte[] data, Type type)
-    //{
-    //    IntPtr buff = Marshal.AllocHGlobal(data.Length); // 배열의 크기만큼 비관리 메모리 영역에 메모리를 할당한다.
-
-    //    Marshal.Copy(data, 0, buff, data.Length); // 배열에 저장된 데이터를 위에서 할당한 메모리 영역에 복사한다.
-    //    object obj = Marshal.PtrToStructure(buff, type); // 복사된 데이터를 구조체 객체로 변환한다.
-
-    //    Marshal.FreeHGlobal(buff); // 비관리 메모리 영역에 할당했던 메모리를 해제함
-
-    //    if (Marshal.SizeOf(obj) != data.Length) // (((PACKET_DATA)obj).TotalBytes != data.Length) // 구조체와 원래의 데이터의 크기 비교
-    //    {
-    //        return null; // 크기가 다르면 null 리턴
-    //    }
-
-    //    return obj; // 구조체 리턴
-    //}
-};
+    public const int recvBufferSize = 1024;
+    public const int portNum = 4211;
+}
 
 public class TCPServer : MonoBehaviour
 {
-    private Thread acceptThread;
+    // ========== UI ==========
+    private Text logText = null;
+    private ScrollRect scrollRect = null;
 
-    private MyClient[] myClients = new MyClient[4];
-    private int clientCount = 0;
+    // ========== Atomic queue  ==========
+    public ConcurrentQueue<string> atomicQueue = null;
 
-    private TcpListener tcp_Listener;
+    // ========== Network ==========
+    private Socket mainSock = null;
+    private List<MyClient> myClientsList = null;
 
     // Start is called before the first frame update
     void Start()
     {
-        myClients[0] = new MyClient();
-        myClients[1] = new MyClient();
-        myClients[2] = new MyClient();
-        myClients[3] = new MyClient();
+        // UI 래퍼런스 가져오기
+        logText = GameObject.Find("Log").GetComponent<Text>();
+        scrollRect = GameObject.Find("ScrollView").GetComponent<ScrollRect>();
 
-        this.tcp_Listener = new TcpListener(IPAddress.Any, 4211);
-        this.tcp_Listener.Start();
+        // 멀티스레드 안전 큐 초기화
+        atomicQueue = new ConcurrentQueue<string>();
 
-        acceptThread = new Thread(new ThreadStart(this.Accept), 8192);
-        acceptThread.Start();
+        // 소켓 생성
+        mainSock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
 
-        Debug.Log("Server Start");
-    }
+        // 클라이언트 리스트 초기화
+        myClientsList = new List<MyClient>();
 
-    // Update is called once per frame
-    void Update()
-    {
+        // 소켓 오픈
+        IPEndPoint serverEP = new IPEndPoint(IPAddress.Any, Define.portNum);
 
-    }
+        // 소켓 바인드
+        mainSock.Bind(serverEP);
 
-    private void OnDestroy()
-    {
-        for(int i = 0; i < 4; ++i)
+        // 소켓 리슨
+        mainSock.Listen(10); // Why 10 ???
+
+        try
         {
-            // streamReaders[i].Close();
-            // clients[i].Close();
+            // Accept 시작
+            mainSock.BeginAccept(ClinetAccept, null);
+        }
+        catch (Exception ex)
+        {
+            Debug.Log("FirstBeginAccept() " + ex.ToString());
+        }
+
+        // 서버 시작 UI 표시
+        atomicQueue.Enqueue("Server Start\n");
+    }
+
+    private void Update()
+    {
+        string logStr = "";
+
+        // 큐에 로그 쌓을 것이 있는 지 확인
+        while (atomicQueue.IsEmpty == false)
+        {
+            // 로그 쌓은 것이 있으면
+            if (atomicQueue.TryDequeue(out logStr))
+            {
+                // Log UI에 추가
+                if (logText.text.Length > 10000) logText.text = "";
+                logText.text += logStr;
+            }
+        }
+
+        // UI 스크롤을 맨 마지막으로 내려줌
+        scrollRect.verticalNormalizedPosition = 0.0f;
+    }
+
+    private void ClinetAccept(IAsyncResult ar)
+    {
+        Socket acceptedSocket = null;
+        MyClient newClient = null;
+
+        try
+        {
+            // 클라이언트의 연결 요청 수락
+            acceptedSocket = mainSock.EndAccept(ar);
+
+            // 연결된 클라이언트 IP:Port UI 표시
+            atomicQueue.Enqueue("ClinetAccept() " + acceptedSocket.RemoteEndPoint.ToString() + "\n");
+        }
+        catch (Exception ex)
+        {
+            Debug.Log("EndAccept() " + ex.ToString());
+        }
+
+        try
+        {
+            // 또 다른 클라이언트의 연결 대기
+            mainSock.BeginAccept(ClinetAccept, null);
+        }
+        catch (Exception ex)
+        {
+            Debug.Log("BeginAccept() " + ex.ToString());
+        }
+
+        try
+        {
+            // 새로운 클라이언트 객체 생성
+            newClient = new MyClient(this, acceptedSocket, logText, scrollRect);
+
+            // 새로운 클라이언트 객체 배열에 추가
+            myClientsList.Add(newClient);
+        }
+        catch (Exception ex)
+        {
+            Debug.Log("new MyClient() " + ex.ToString());
+        }
+
+        if (newClient != null)
+        {
+            try
+            {
+                // 비동기적 Recv 시작
+                acceptedSocket.BeginReceive(newClient.recvBuffer, 0, Define.recvBufferSize, 0, newClient.PacketReceived, newClient);
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("BeginReceive() " + ex.ToString());
+            }
         }
     }
 
-    public void Accept()
+    public void DisconnectClient(MyClient localMyClient)
     {
-        while (true)
-        {
-            TcpClient tempTCPClient = this.tcp_Listener.AcceptTcpClient(); // 클라이언트와 접속
-            this.myClients[clientCount].AcceptClient(tempTCPClient);
-
-            Thread recvThread = new Thread(new ThreadStart(this.myClients[clientCount].Recv), 8192);
-
-            clientCount++;
-
-            recvThread.Start();
-        }
+        // 클라이언트 리스트에서 연결이 끊어진 클라이언트 제거
+        myClientsList.Remove(localMyClient);
     }
 }
