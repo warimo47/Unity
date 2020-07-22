@@ -57,6 +57,8 @@ public class MyClient
             // 연결 끊김
             if (received == 0)
             {
+                myTCPServer.atomicQueue.Enqueue("[Disconnected] " + mySocket.RemoteEndPoint.ToString() + "\n");
+
                 mySocket.Close();
 
                 myTCPServer.DisconnectClient(this);

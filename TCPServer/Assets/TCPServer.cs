@@ -96,7 +96,7 @@ public class TCPServer : MonoBehaviour
             acceptedSocket = mainSock.EndAccept(ar);
 
             // 연결된 클라이언트 IP:Port UI 표시
-            atomicQueue.Enqueue("ClinetAccept() " + acceptedSocket.RemoteEndPoint.ToString() + "\n");
+            atomicQueue.Enqueue("[ClinetAccept] " + acceptedSocket.RemoteEndPoint.ToString() + "\n");
         }
         catch (Exception ex)
         {

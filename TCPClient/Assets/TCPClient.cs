@@ -1,153 +1,169 @@
 ﻿using System;
-using System.Linq;
-using System.Text;
-using System.Net;
 using System.Net.Sockets;
 using System.IO;
-using System.Threading;
-using System.Collections;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using UnityEngine.UI;
 
+#region [Packet define]
 [Serializable]
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public unsafe struct IF_SC100
+public unsafe struct TestPacket
 {
     public byte header;
-    public fixed char ID[32];
-    public fixed char IP[30];
-    public double latitude;
-    public double longitude;
-    public byte objType;
-    public byte isApproved;
-    public byte accidentRiskLevel;
+    public fixed char stringParam[30];
+    public double doubleParam;
+    public int intParam;
 };
-
-[Serializable]
-[StructLayout(LayoutKind.Sequential, Pack = 1)]
-public unsafe struct IF_SC200
-{
-    public byte header;
-    public fixed char sectionName[32];
-    public fixed char IP[30];
-    public byte accidentRiskType;
-};
+#endregion
 
 public class TCPClient : MonoBehaviour
 {
-    TcpClient client;
-    NetworkStream ns;
-    StreamWriter writer;
+    // ========== Network ==========
+    private TcpClient client;
+    private NetworkStream ns;
+    private StreamWriter writer;
+    private TestPacket testPacket;
 
-    IF_SC100 if_sc100;
-    IF_SC200 if_sc200;
+    // ========== UI ==========
+    private InputField serverIPText;
+    private InputField portText;
+    private Text txt_Connect;
+
+    private InputField ipf_string;
+    private InputField ipf_double;
+    private InputField ipf_int;
+
+    private Button btn_SendPacket;
+    
+    // ========== State ==========
+    private bool isConnect = false;
 
     // Start is called before the first frame update
-    unsafe void Start()
+    private void Start()
     {
-        Screen.SetResolution(640, 480, true);
-
-        if_sc100.header = 1;
-
-        string myID = "Human";
-        for (int i = 0; i < myID.Length; ++i)
-        {
-            if_sc100.ID[i] = myID[i];
-        }
-
-        string myip = "";
-        foreach (IPAddress ip in Dns.GetHostEntry(Dns.GetHostName()).AddressList)
-        {
-            if (ip.AddressFamily == AddressFamily.InterNetwork)
-            {
-                myip = ip.ToString();
-                break;
-            }
-        }
-        for(int i = 0; i < myip.Length; ++i)
-        {
-            if_sc100.IP[i] = myip[i];
-            if_sc200.IP[i] = myip[i];
-        }
-
-        if_sc100.latitude = 123.345678f;
-        if_sc100.longitude = -789.345678f;
-        if_sc100.objType = 2;
-        if_sc100.isApproved = 1;
-        if_sc100.accidentRiskLevel = 3;
-
-        if_sc200.header = 2;
-        string mySectionName = "Zone1";
-        for (int i = 0; i < myip.Length; ++i)
-        {
-            if_sc200.IP[i] = myip[i];
-        }
-        for (int i = 0; i < mySectionName.Length; ++i)
-        {
-            if_sc200.sectionName[i] = mySectionName[i];
-        }
-        if_sc200.accidentRiskType = 2;
-
-        client = new TcpClient("127.0.0.1", Int32.Parse("4211")); // (ip주소 , 포트 번호)
-        ns = client.GetStream();
-        writer = new StreamWriter(ns);
-
-        Debug.Log("Server connet");
+        Initialize();
     }
 
-    // Update is called once per frame
-    unsafe void Update()
+    private unsafe void Initialize()
     {
-        if (Input.GetKeyDown(KeyCode.Keypad1))
+        // ===== UI Binding =====
+        serverIPText = GameObject.Find("IPF_ServerIP").GetComponent<InputField>();
+        portText = GameObject.Find("IPF_Port").GetComponent<InputField>();
+        txt_Connect = GameObject.Find("TXT_Connect").GetComponent<Text>();
+
+        ipf_string = GameObject.Find("IPF_string").GetComponent<InputField>();
+        ipf_double = GameObject.Find("IPF_double").GetComponent<InputField>();
+        ipf_int = GameObject.Find("IPF_int").GetComponent<InputField>();
+
+        btn_SendPacket = GameObject.Find("BTN_SendPacket").GetComponent<Button>();
+    }
+
+    public void Connect()
+    {
+        if (isConnect == false)
         {
+            try
+            {
+                client = new TcpClient(serverIPText.text, Int32.Parse(portText.text)); // (ip주소 , 포트 번호)
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("new TcpClient() " + ex.ToString());
+            }
+
+            ns = client.GetStream();
+
+            try
+            {
+                writer = new StreamWriter(ns);
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("new StreamWriter() " + ex.ToString());
+            }
+
+            // 패킷 보내는 버튼 활성화
+            btn_SendPacket.enabled = true;
+
+            // 서버 연결 버튼 글자 변경
+            txt_Connect.text = "Disconnect";
+
+            Debug.Log("Server connet");
+
+            // 연결된 상태
+            isConnect = true;
+        }
+        else
+        {
+            // Close StreamWriter
+            writer.Close();
+
+            // Close TcpClient
+            client.Close();
+
+            // 패킷 보내는 버튼 비활성화
+            btn_SendPacket.enabled = false;
+
+            // 서버 연결 버튼 글자 변경
+            txt_Connect.text = "Connect";
+
+            Debug.Log("Server disconnet");
+
+            // 연결 안된 상태
+            isConnect = false;
+        }
+    }
+
+    public unsafe void SendTestPacket()
+    {
+        // ===== IF-SC100 value copy =====
+        testPacket.header = 1;
+        for (int i = 0; i < ipf_string.text.Length; ++i)
+        {
+            testPacket.stringParam[i] = ipf_string.text[i];
+        }
+        testPacket.doubleParam = double.Parse(ipf_double.text);
+        testPacket.intParam = int.Parse(ipf_int.text);
+
+        if (ns.CanWrite == true)
+        {
+            ns.Write(StructureToByteArray(testPacket), 0, sizeof(TestPacket));
             Debug.Log("Send IF_SC100");
-
-            if (ns.CanWrite == true)
-            {
-                ns.Write(StructureToByteArray(if_sc100), 0, sizeof(IF_SC100));
-            }
-            else
-            {
-                Debug.Log("Can not write");
-            }
         }
-
-        if (Input.GetKeyDown(KeyCode.Keypad2))
+        else
         {
-            Debug.Log("Send IF_SC200");
-
-            if (ns.CanWrite == true)
-            {
-                ns.Write(StructureToByteArray(if_sc200), 0, sizeof(IF_SC200));
-            }
-            else
-            {
-                Debug.Log("Can not write");
-            }
+            Debug.Log("Can not write");
         }
     }
 
-    void Close()
+    public unsafe void SendTestPacket(string localString, double localDouble, int localInt)
     {
-        writer.Close();    
-        client.Close();
+        // ===== IF-SC100 value copy =====
+        testPacket.header = 1;
+        for (int i = 0; i < localString.Length; ++i)
+        {
+            testPacket.stringParam[i] = localString[i];
+        }
+        testPacket.doubleParam = localDouble;
+        testPacket.intParam = localInt;
+
+        if (ns.CanWrite == true)
+        {
+            ns.Write(StructureToByteArray(testPacket), 0, sizeof(TestPacket));
+            Debug.Log("Send IF_SC100");
+        }
+        else
+        {
+            Debug.Log("Can not write");
+        }
     }
 
-    public static byte[] StructureToByteArray(IF_SC100 if_sc100)
+    private static byte[] StructureToByteArray(TestPacket localTestPacket)
     {
-        byte[] bb = new byte[Marshal.SizeOf(if_sc100)];
+        byte[] bb = new byte[Marshal.SizeOf(localTestPacket)];
         GCHandle gch = GCHandle.Alloc(bb, GCHandleType.Pinned);
-        Marshal.StructureToPtr(if_sc100, gch.AddrOfPinnedObject(), false);
-        gch.Free();
-        return bb;
-    }
-
-    public static byte[] StructureToByteArray(IF_SC200 if_sc200)
-    {
-        byte[] bb = new byte[Marshal.SizeOf(if_sc200)];
-        GCHandle gch = GCHandle.Alloc(bb, GCHandleType.Pinned);
-        Marshal.StructureToPtr(if_sc200, gch.AddrOfPinnedObject(), false);
+        Marshal.StructureToPtr(localTestPacket, gch.AddrOfPinnedObject(), false);
         gch.Free();
         return bb;
     }
