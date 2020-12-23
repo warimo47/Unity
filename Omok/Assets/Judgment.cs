@@ -4,9 +4,9 @@ using UnityEngine;
 
 public class Judgment : MonoBehaviour
 {
-    private int turnCount = 1;
     private int[] ground;
-    
+    public int turnCount = 1;
+
     public SceneManager sceneManager;
 
     // Start is called before the first frame update
@@ -32,11 +32,17 @@ public class Judgment : MonoBehaviour
 
     public void TryPutRock(int _y, int _x)
     {
-        if (ground[_y * 19 + _x] == 2)
-        {
-            sceneManager.PutRock(_y, _x, turnCount % 2);
-            ground[_y * 19 + _x] = turnCount % 2;
-            turnCount++;
-        }
+        if (ground[_y * 19 + _x] != 2) return;
+        
+        sceneManager.PutRock(_y, _x, turnCount % 2);
+        ground[_y * 19 + _x] = turnCount % 2;
+        turnCount++;
+
+        checkVictory(turnCount % 2);
+    }
+
+    void checkVictory(int _isBlack)
+    {
+
     }
 }

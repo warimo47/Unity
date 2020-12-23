@@ -10618,6 +10618,7 @@ GameObject:
   - component: {fileID: 492574371}
   - component: {fileID: 492574370}
   - component: {fileID: 492574369}
+  - component: {fileID: 492574372}
   m_Layer: 5
   m_Name: BTN_0x0
   m_TagString: Untagged
@@ -10735,6 +10736,49 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 492574367}
   m_CullTransparentMesh: 0
+--- !u!114 &492574372
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 492574367}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0b148fe25e99eb48b9724523833bab1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Delegates:
+  - eventID: 0
+    callback:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 1102850704}
+          m_MethodName: MousePointerEnter
+          m_Mode: 2
+          m_Arguments:
+            m_ObjectArgument: {fileID: 492574367}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+  - eventID: 1
+    callback:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 1102850704}
+          m_MethodName: MousePointerExit
+          m_Mode: 2
+          m_Arguments:
+            m_ObjectArgument: {fileID: 492574367}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
 --- !u!1 &499536864
 GameObject:
   m_ObjectHideFlags: 0
@@ -12815,6 +12859,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa465da5fe2938145abe1c2c31c9ca09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  turnCount: 1
   sceneManager: {fileID: 1102850704}
 --- !u!4 &578834381
 Transform:
@@ -24435,6 +24480,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: edd5c60472c3c61469c0217b1e9cdf27, type: 3}
   - {fileID: 21300000, guid: 40fc1a2cab4304648a7759ce1497f909, type: 3}
   - {fileID: 21300000, guid: 7cfb9c923da90e146b99d7802d07d1b0, type: 3}
+  judgment: {fileID: 578834380}
 --- !u!4 &1102850705
 Transform:
   m_ObjectHideFlags: 0
@@ -31415,6 +31461,7 @@ GameObject:
   - component: {fileID: 1455639181}
   - component: {fileID: 1455639180}
   - component: {fileID: 1455639179}
+  - component: {fileID: 1455639182}
   m_Layer: 5
   m_Name: BTN_0x1
   m_TagString: Untagged
@@ -31532,6 +31579,49 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1455639177}
   m_CullTransparentMesh: 0
+--- !u!114 &1455639182
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1455639177}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0b148fe25e99eb48b9724523833bab1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Delegates:
+  - eventID: 0
+    callback:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 1102850704}
+          m_MethodName: MousePointerEnter
+          m_Mode: 2
+          m_Arguments:
+            m_ObjectArgument: {fileID: 1455639177}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+  - eventID: 1
+    callback:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 1102850704}
+          m_MethodName: MousePointerExit
+          m_Mode: 2
+          m_Arguments:
+            m_ObjectArgument: {fileID: 1455639177}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
 --- !u!1 &1458824777
 GameObject:
   m_ObjectHideFlags: 0
